@@ -1,9 +1,23 @@
+#!/usr/bin/env python3
+import os
+import sys
+print(sys.exec_prefix)
+print(os.path.dirname(os.path.realpath(__file__)))
+try:
+    user_paths = os.environ['PYTHONPATH'].split(os.pathsep)
+except KeyError:
+    user_paths = []
+
+print(user_paths)
+for p in sys.path:
+    print(p)
+
 import bpy
 import numpy as np
 import time
-import os
+
 import yaml
-import sys
+
 
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
@@ -27,7 +41,7 @@ def setupScene(x_dim,y_dim):
         scene.render.resolution_x = x_dim
         scene.render.resolution_y = y_dim
         scene.render.resolution_percentage = 100
-        scene.world.horizon_color = (0.0 , 0.0 , 0.0)
+        # scene.world.horizon_color = (0.0 , 0.0 , 0.0)
 
 
 # ------------------------------------------------------------------------------
@@ -65,32 +79,49 @@ def setupLamps(l_energy,l_color,l_type):
 
 
     # ADD LAMP_1
-    lamp_data_1 = bpy.data.lamps.new(name="Lamp_1", type=lamp_type)
+    if bpy.app.version >= (2, 80, 0):
+        lamp_data_1 = bpy.data.lights.new(name="Lamp_1", type=lamp_type)
+    else:
+        lamp_data_1 = bpy.data.lamps.new(name="Lamp_1", type=lamp_type)
+
     lamp_data_1.energy = lamp_energy
     lamp_data_1.color = lamp_color
 
     lamp_object_1 = bpy.data.objects.new(name="Lamp_1", object_data=lamp_data_1)
     lamp_object_1.location = (2,-2,2)
 
-    bpy.context.scene.objects.link(lamp_object_1)
-    lamp_object_1.select = True
-    bpy.context.scene.objects.active = lamp_object_1
+    bpy.context.collection.objects.link(lamp_object_1)
+
+    if bpy.app.version >= (2, 80, 0):
+        lamp_object_1.select_set(True)
+        bpy.context.view_layer.objects.active = lamp_object_1
+    else:
+        lamp_object_1.select = True
+        bpy.context.collection.objects.active = lamp_object_1
+
 
     lamp_list.append(lamp_object_1)
 
 
 
-    # ADD LAMP_2
-    lamp_data_2 = bpy.data.lamps.new(name="Lamp_2", type=lamp_type)
+    # ADD LAMP_1
+    if bpy.app.version >= (2, 80, 0):
+        lamp_data_2 = bpy.data.lights.new(name="Lamp_2", type=lamp_type)
+    else:
+        lamp_data_2 = bpy.data.lamps.new(name="Lamp_2", type=lamp_type)
     lamp_data_2.energy = lamp_energy
     lamp_data_2.color = lamp_color
 
     lamp_object_2 = bpy.data.objects.new(name="Lamp_2", object_data=lamp_data_1)
     lamp_object_2.location = (-2,2,2)
 
-    bpy.context.scene.objects.link(lamp_object_2)
-    lamp_object_2.select = True
-    bpy.context.scene.objects.active = lamp_object_2
+    bpy.context.collection.objects.link(lamp_object_2)
+    if bpy.app.version >= (2, 80, 0):
+        lamp_object_2.select_set(True)
+        bpy.context.view_layer.objects.active = lamp_object_2
+    else:
+        lamp_object_2.select = True
+        bpy.context.collection.objects.active = lamp_object_2
 
     lamp_list.append(lamp_object_2)
 
@@ -262,7 +293,11 @@ def addTrackingConstraints(camera,lamp_list,origin_obj):
     """ 
 
     # Constrain the camera
-    bpy.context.scene.objects.active = camera
+
+    if bpy.app.version >= (2, 80, 0):
+        bpy.context.view_layer.objects.active = camera
+    else:
+        bpy.context.collection.objects.active = camera
     bpy.ops.object.constraint_add(type='TRACK_TO')
     camera.constraints['Track To'].target = origin_obj
     camera.constraints['Track To'].track_axis = 'TRACK_NEGATIVE_Z'
@@ -271,7 +306,10 @@ def addTrackingConstraints(camera,lamp_list,origin_obj):
     # Constrain all lamps
     for lamp in lamp_list:
 
-        bpy.context.scene.objects.active = lamp
+        if bpy.app.version >= (2, 80, 0):
+            bpy.context.view_layer.objects.active = lamp
+        else:
+            bpy.context.collection.objects.active = lamp
         bpy.ops.object.constraint_add(type='TRACK_TO')
         lamp.constraints['Track To'].target = origin_obj
         lamp.constraints['Track To'].track_axis = 'TRACK_NEGATIVE_Z'
@@ -429,21 +467,37 @@ if __name__ == "__main__":
             for o in bpy.data.objects:
                 if(o.type=="MESH"):
                     if(not(flag)):
-                        bpy.context.scene.objects.active = o
+                        if bpy.app.version >= (2, 80, 0):
+                            bpy.context.view_layer.objects.active = o
+                        else:
+                            bpy.context.collection.objects.active = o
                         flag = True
                     
-                    o.select = True
+                    if bpy.app.version >= (2, 80, 0):
+                        o.select_set(True)
+                    else:
+                        o.select = True
                 else:
-                    o.select = False
+                    if bpy.app.version >= (2, 80, 0):
+                        o.select_set(False)
+                    else:
+                        o.select = False
 
             temp_name = bpy.ops.object.join()
-            shape_object = bpy.context.scene.objects.active
+
+            if bpy.app.version >= (2, 80, 0):
+                shape_object = bpy.context.view_layer.objects.active
+            else:
+                shape_object = bpy.context.collection.objects.active
 
 
             shape_counter += 1
             print("RENDERING " + shape_dict['folder_name'] + " " + str(shape_counter) + "/" + str(len(FOLDER_PATHS)) + "\t" + shape_name + " ...\t" , end= "" , file=sys.stderr)
 
-            shape_object.select = True
+            if bpy.app.version >= (2, 80, 0):
+                shape_object.select_set(True)
+            else:
+                shape_object.select = True
 
             # --- STEP 7 --- Orient and scale the model to conform to the
             #                coordinate system
